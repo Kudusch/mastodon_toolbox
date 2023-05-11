@@ -863,7 +863,7 @@ def search_public(api_base, query = None, access_token = None, min_id = None, ma
         new_toots = api.fetch_previous(new_toots)
         if len(new_toots) > 0 and len(queried_toots) < max_toots:
             queried_toots.extend(add_queried_at(new_toots))
-            logger.info(f"Got {len(queried_toots)} toots from {api_base}, last chunk {get_datetime_range(new_toots)} ({api.ratelimit_remaining} calls remaining, reset at {datetime.fromtimestamp(api.ratelimit_reset):%Y-%m-%d %H:%M:%S})")
+            logger.info(f"Got {len(queried_toots)} toots from {api_base} ({api.ratelimit_remaining} calls remaining, reset at {datetime.fromtimestamp(api.ratelimit_reset):%Y-%m-%d %H:%M:%S})")
         else:
             paginate = False
     
@@ -915,7 +915,7 @@ def search_hashtag(queried_hashtag, api_base, access_token = None, min_id = None
             new_toots = api.fetch_previous(new_toots)
             if len(new_toots) > 0:
                 queried_toots.extend(add_queried_at(new_toots))
-                logger.info(f"Got {len(queried_toots)} toots from {api_base}, last chunk {get_datetime_range(new_toots)} ({api.ratelimit_remaining} calls remaining, reset at {datetime.fromtimestamp(api.ratelimit_reset):%Y-%m-%d %H:%M:%S})")
+                logger.info(f"Got {len(queried_toots)} toots from {api_base} ({api.ratelimit_remaining} calls remaining, reset at {datetime.fromtimestamp(api.ratelimit_reset):%Y-%m-%d %H:%M:%S})")
             else:
                 paginate = False
         except:

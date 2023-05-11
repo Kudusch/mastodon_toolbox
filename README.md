@@ -6,6 +6,12 @@ This collection of software is meant to facilitate the gathering and analysis of
 - Respect profile/account hashtags like #nosearch, #nobots or #noindex
 - Use only the data you need
 
+# Installation
+
+`git clone https://github.com/Kudusch/mastodon_toolbox`
+`virtualenv -p python3 venv && source venv/bin/activate`
+`pip install -r requirements.txt`
+
 # Data gathering
 
 ## Chose relevant instances by analysis of followers 

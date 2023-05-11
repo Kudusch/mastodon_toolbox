@@ -115,7 +115,7 @@ def run_hashtag(args):
         for instance in instances:
             if timelines[instance] and len(timelines[instance]) > 0:
                 min_ids[instance] = max([t["id"] for t in timelines[instance]])
-            elif isinstance(min_ids[instance], datetime.datetime):
+            elif isinstance(min_ids[instance], datetime):
                 min_ids[instance] = (int(round(min_ids[instance].timestamp())) * 1000) << 16
         config = {
             "hashtag":hashtag,
@@ -401,11 +401,9 @@ def main():
     parser_export.add_argument("--aggregate", action="store_true")
     parser_export.set_defaults(func=run_export)
 
-    try:
-        args = parser.parse_args()
-        args.func(args)
-    except:
-        pass
+    args = parser.parse_args()
+    args.func(args)
+    
 
 if __name__ == '__main__':
     main()
