@@ -1,3 +1,3 @@
-from .mastodon_toolbox import main
+from .mtb import main
 
 main()

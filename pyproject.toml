@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mtb"
+version = "1.0.0"
+authors = [{name="Tim Schatto-Eckrodt", email="tim.schatto-eckrodt@uni-hamburg.de" }]
+description = "This tool is meant to facilitate the gathering and analysis of data from the Mastodon network. "
+readme = "README.md"
+dependencies = [
+        'beautifulsoup4==4.11.1',
+        'blurhash==1.1.4',
+        'bs4==0.0.1',
+        'certifi==2022.12.7',
+        'charset-normalizer==3.0.1',
+        'decorator==5.1.1',
+        'idna==3.4',
+        'Mastodon.py==1.8.0',
+        'msgspec==0.13.1',
+        'numpy==1.24.2',
+        'orjson==3.8.6',
+        'Pillow==9.4.0',
+        'python-dateutil==2.8.2',
+        'python-magic==0.4.27',
+        'requests==2.28.2',
+        'six==1.16.0',
+        'soupsieve==2.3.2.post1',
+        'urllib3==1.26.14'
+    ]
+requires-python = ">=3.9"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+include = ['mtb*']
+
+[project.scripts]
+mtb = "mtb.mtb:main"
+
+[project.urls]
+"Homepage" = "https://github.com/Kudusch/mastodon_toolbox"
+"Bug Tracker" = "https://github.com/Kudusch/mastodon_toolbox/issues"

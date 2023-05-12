@@ -1,5 +1,8 @@
 .DS_Store
 __pycache__
-config.py
+config.ini
 .*.swp
 mastodon-tb.log
+mtb.egg*
+build/*
+data/*
