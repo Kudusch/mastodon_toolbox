@@ -1,21 +1,21 @@
 #!/usr/bin/env python3
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import mastodon
-import requests
-from requests.exceptions import ConnectTimeout
 from bs4 import BeautifulSoup
-import time
-import os
+from datetime import datetime, timedelta
+from requests.exceptions import ConnectTimeout
+from urllib.parse import urlparse
+import configparser
 import csv
-import sys
 import json
 import logging
-from datetime import datetime, timedelta
-import warnings
-from urllib.parse import urlparse
+import mastodon
+import os
 import re
+import requests
+import sys
+import time
+import warnings
 warnings.filterwarnings("ignore", category=UserWarning, module='bs4') # ignore MarkupResemblesLocatorWarning
 
 logger = logging.getLogger(__name__)
@@ -42,8 +42,9 @@ account_key_names = ["id", "username", "acct", "display_name", "locked", "bot", 
 
 instance_key_names = ["uri", "title", "short_description", "description", "email", "version", "user_count", "status_count", "domain_count", "weekly_statuses", "weekly_logins", "weekly_registrations", "thumbnail", "languages", "registrations", "approval_required", "invites_enabled", "max_characters", "max_media_attachments", "max_poll_options", "max_poll_characters_per_option", "contact_account_url", "rules"]
 
-import config
-access_tokens = config.mastodon_tokens
+config = configparser.ConfigParser()
+config.read("config.ini")
+access_tokens = config["MASTODON"]
 
 def get_datetime_range(toots):
     values = [t["created_at"] for t in toots]
@@ -990,7 +991,7 @@ def get_instances(sort_by="active_users", min_active_users=None, min_users=None,
         "min_users": min_users,
         "language": language
     }
-    r = requests.get("https://instances.social/api/1.0/instances/list", params = payload, headers = {"Authorization":f"Bearer {config.instances_social_api_key}"})
+    r = requests.get("https://instances.social/api/1.0/instances/list", params = payload, headers = {"Authorization":f"Bearer {config['INSTANCES.SOCIAL']['api_key']}"})
     
     if r.status_code == 200:
         return(r.json()["instances"])
