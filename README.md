@@ -9,34 +9,38 @@ This collection of software is meant to facilitate the gathering and analysis of
 # Installation
 
 `git clone https://github.com/Kudusch/mastodon_toolbox`
-`virtualenv -p python3 venv && source venv/bin/activate`
-`pip install -r requirements.txt`
+`cd mastodon_toolbox`
+`virtualenv -p python3 venv`
+`source venv/bin/activate`
+`python -m pip install .`
+
+Add API keys to `config_example.ini` and rename to `config.ini`
 
 # Data gathering
 
 ## Chose relevant instances by analysis of followers 
 
-`mastodon-tb instances --users user.txt`
-`mastodon-tb instances --sort_by active_users --min_active_users 0 --min_users 0 --count 5 --language "de"`
+`mtb instances --users user.txt`
+`mtb instances --sort_by active_users --min_active_users 0 --min_users 0 --count 5 --language "de"`
 
 ## Continuously gather toots that contain a hashtag
 
-`mastodon-tb hashtag --tag=[hashtag] --instances=[instances] --data_dir=[data_dir] --start_date=[start_date]`
+`mtb hashtag --tag=[hashtag] --instances=[instances] --data_dir=[data_dir] --start_date=[start_date]`
 
 ## Continuously gather (filtered) public toots
 
-`mastodon-tb public --instances=[instances] --data_dir=[data_dir] --start_date=[start_date]`
+`mtb public --instances=[instances] --data_dir=[data_dir] --start_date=[start_date]`
 
-`mastodon-tb public --instances=[instances] --data_dir=[data_dir] --start_date=[start_date] --filter=[filter.txt]`
+`mtb public --instances=[instances] --data_dir=[data_dir] --start_date=[start_date] --filter=[filter.txt]`
 
 ## Sample public toots
 
-`mastodon-tb sample --instances=[instances] --data_dir=[data_dir] --start_date=[start_date] --end_date=[end_date] --size=[size]`
+`mtb sample --instances=[instances] --data_dir=[data_dir] --start_date=[start_date] --end_date=[end_date] --size=[size]`
 
 ## Gather interactions with toots
 
-`mastodon-tb interactions --toots=[toots.txt]`
+`mtb interactions --toots=[toots.txt]`
 
 ## Export data
 
-`mastodon-tb export --data_dir=[data_dir] --format=csv`
+`mtb export --data_dir=[data_dir] --format=csv`
