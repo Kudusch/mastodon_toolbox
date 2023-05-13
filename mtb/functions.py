@@ -42,6 +42,11 @@ account_key_names = ["id", "username", "acct", "display_name", "locked", "bot", 
 
 instance_key_names = ["uri", "title", "short_description", "description", "email", "version", "user_count", "status_count", "domain_count", "weekly_statuses", "weekly_logins", "weekly_registrations", "thumbnail", "languages", "registrations", "approval_required", "invites_enabled", "max_characters", "max_media_attachments", "max_poll_options", "max_poll_characters_per_option", "contact_account_url", "rules"]
 
+trends_key_names = {
+    "tags":["name", "url"],
+    "links":["url", "title", "description", "type", "author_name", "author_url", "provider_name", "provider_url", "html", "width", "height", "image", "embed_url", "blurhash"]
+}
+
 config = configparser.ConfigParser()
 config.read("config.ini")
 access_tokens = config["MASTODON"]
@@ -788,6 +793,28 @@ def get_accounts_by_url(urls, file_name = None, parse_html = False,request_timeo
 
     logger.info(f"Retrieved {len(accounts)} accounts")
     return accounts
+    
+def get_instance_trends(api_base, access_token = None, verbose = False, request_timeout = 30):
+    if verbose and logger.level >= 20:
+        logger.setLevel(logging.INFO)
+    
+    try:
+        api = mastodon.Mastodon(api_base_url = api_base, access_token = access_token, request_timeout = request_timeout, ratelimit_method = "pace")
+        trends = {
+            "tags":api.trending_tags(),
+            "statuses":add_queried_at(api.trending_statuses()),
+            "links":api.trending_links()
+        }
+        logger.info(f"Got trends for {api_base}")
+    except:
+        trends = None
+        logger.warning(f"No trends for {api_base} found")
+    
+    #logger.handlers[0].flush()
+    if verbose and logger.level >= 20:
+        logger.setLevel(logging.WARNING)
+    
+    return trends
 
 def get_instances_by_url(urls, file_name = None, include_peers = False, parse_html = False, request_timeout = 15, verbose = False):
     if verbose and logger.level >= 20:

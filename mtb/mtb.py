@@ -241,47 +241,93 @@ def run_interactions(args):
 
 
 def run_export(args):
-    with open(f"{args.data_dir}/search_config.json", "r") as f:
-        config_file = json.load(f)
-    timelines = {}
-    files = [f for f in listdir(args.data_dir) if not f.startswith(".") and f != "search_config.json" and f.endswith(".json")]
-    for fname in files:
-        with open(f"{args.data_dir}/{fname}", "r") as f:
-            for k, v in json.load(f).items():
-                if v:
-                    if k in timelines:
-                        timelines[k].extend(v)
+    if path.exists(f"{args.data_dir}/search_config.json"): 
+        with open(f"{args.data_dir}/search_config.json", "r") as f:
+            config_file = json.load(f)
+        timelines = {}
+        files = [f for f in listdir(args.data_dir) if not f.startswith(".") and f != "search_config.json" and f.endswith(".json")]
+        for fname in files:
+            with open(f"{args.data_dir}/{fname}", "r") as f:
+                for k, v in json.load(f).items():
+                    if v:
+                        if k in timelines:
+                            timelines[k].extend(v)
+                        else:
+                            timelines[k] = v
+        
+        with open(f"{args.out_file}", "w") as out_file:
+            if args.format == "json":
+                if args.aggregate:
+                    toots = []
+                    for instance, uri, toot in mf.aggregate_timelines(timelines):
+                        toots.append(toot)
+                    json.dump(toots, out_file, default=str)
+                    print(f"Wrote {len(toots)} unique toots to {out_file.name}")
+                else:
+                    json.dump(timelines, out_file, default=str)
+                    print(f"Wrote toots from {len(timelines.keys())} instances to {out_file.name}")
+                
+            elif args.format == "csv":
+                writer = csv.writer(out_file, dialect="unix")
+                writer.writerow(mf.key_names)
+                if args.aggregate:
+                    n_toots = 0
+                    for instance, uri, toot in mf.aggregate_timelines(timelines):
+                        toot = mf.toots_to_lines([toot], parse_html = args.parse_html, instance_name = instance, verbose=False)
+                        writer.writerow(toot[0])
+                        n_toots += 1
+                    print(f"Wrote {n_toots} toots from {len(timelines.keys())} instances to {out_file.name}")
+                else:
+                    for instance, toots in timelines.items():
+                        toots = mf.toots_to_lines(toots, parse_html = args.parse_html, instance_name = instance, verbose=False)
+                        for toot in toots:
+                            writer.writerow(toot)
+                    print(f"Wrote toots from {len(timelines.keys())} instances to {out_file.name}")
+    else:
+        files = [f for f in listdir(args.data_dir) if not f.startswith(".") and f.endswith("_trends.json")]
+        all_tags = {}
+        all_links = {}
+        all_statuses = {}
+        for fname in files:
+            with open(f"{args.data_dir}/{fname}", "r") as f:
+                for instance, trends in json.load(f).items():
+                    if not trends:
+                        continue
+                    if instance in all_tags:
+                        all_tags[instance].extend(trends["tags"])
                     else:
-                        timelines[k] = v
-    
-    with open(f"{args.out_file}", "w") as out_file:
-        if args.format == "json":
-            if args.aggregate:
-                toots = []
-                for instance, uri, toot in mf.aggregate_timelines(timelines):
-                    toots.append(toot)
-                json.dump(toots, out_file, default=str)
-                print(f"Wrote {len(toots)} unique toots to {out_file.name}")
-            else:
-                json.dump(timelines, out_file, default=str)
-                print(f"Wrote toots from {len(timelines.keys())} instances to {out_file.name}")
+                        all_tags[instance] = trends["tags"]
+                    if instance in all_links:
+                        all_links[instance].extend(trends["links"])
+                    else:
+                        all_links[instance] = trends["links"]
+                    if instance in all_statuses:
+                        all_statuses[instance].extend(trends["statuses"])
+                    else:
+                        all_statuses[instance] = trends["statuses"]
+        
+        with open(f"tags.csv", "w") as tag_file:
+            tag_writer = csv.writer(tag_file, dialect="unix")
+            tag_writer.writerow(mf.trends_key_names["tags"] + ["day", "accounts", "uses", "instance"])
+            for instance, tags in all_tags.items():
+                for tag in tags:
+                    for history in tag["history"]:
+                        day, accounts, uses = history.values()
+                        tag_writer.writerow([tag[k] for k in mf.trends_key_names["tags"]] + [day, accounts, uses, instance])
+        
+        with open(f"links.csv", "w") as link_file:
+            link_writer = csv.writer(link_file, dialect="unix")
+            link_writer.writerow(mf.trends_key_names["links"] + ["day", "accounts", "uses", "instance"])
+            for instance, links in all_links.items():
+                for link in links:
+                    for history in link["history"]:
+                        day, accounts, uses = history.values()
+                        link_writer.writerow([link[k] for k in mf.trends_key_names["links"]] + [day, accounts, uses, instance])
+        
+        for instance, statuses in all_statuses.items():
+            mf.toots_to_csv(statuses, file_name = "statuses.csv", parse_html = args.parse_html, instance_name = instance, append=True, verbose=False)
             
-        elif args.format == "csv":
-            writer = csv.writer(out_file, dialect="unix")
-            writer.writerow(mf.key_names)
-            if args.aggregate:
-                n_toots = 0
-                for instance, uri, toot in mf.aggregate_timelines(timelines):
-                    toot = mf.toots_to_lines([toot], parse_html = args.parse_html, instance_name = instance, verbose=False)
-                    writer.writerow(toot[0])
-                    n_toots += 1
-                print(f"Wrote {n_toots} toots from {len(timelines.keys())} instances to {out_file.name}")
-            else:
-                for instance, toots in timelines.items():
-                    toots = mf.toots_to_lines(toots, parse_html = args.parse_html, instance_name = instance, verbose=False)
-                    for toot in toots:
-                        writer.writerow(toot)
-                print(f"Wrote toots from {len(timelines.keys())} instances to {out_file.name}")
+        
 
 def run_sample(args):
     timelines = {}
@@ -322,6 +368,26 @@ def run_sample(args):
     if not all([isinstance(timeline, type(None)) for timeline in timelines.values()]):
         with open(f"{args.data_dir}/{datetime.now().strftime('%s')}_timelines.json", "w") as f:
             json.dump(timelines, f, default=str)
+            
+def run_trends(args):
+    trends = {}
+    if not args.instances:
+        print("Please provide a list of instances")
+        exit()
+    else:        
+        instances = [i.strip() for i in args.instances.readlines()]
+        args.instances.close()
+    
+    for instance in instances:
+        if instance in mf.access_tokens.keys():
+            access_token = mf.access_tokens[instance]
+        else:
+            access_token = None
+        trends[instance] = mf.get_instance_trends(instance, access_token = access_token, verbose = True)
+    
+    if not all([isinstance(trends, type(None)) for timeline in trends.values()]):
+        with open(f"{args.data_dir}/{datetime.now().strftime('%s')}_trends.json", "w") as f:
+            json.dump(trends, f, default=str)
     
 def date(s):
     return datetime.strptime(s, "%Y-%m-%d")
@@ -329,81 +395,80 @@ def date(s):
 def main():
     version = 1.0
     parser = argparse.ArgumentParser(
-        prog="mastodon-tb",
-        description="A cool application.",
-        usage="mastodon-tb [-h] command [--users USERS] [--hashtag HASHTAG] [--instances INSTANCES] [--data_dir DATA_DIR] [--start_date START_DATE]"
+        prog="mtb",
+        description="A tool to gather data from Mastodon",
+        usage="mtb [-h] command [options]"
     )
 
     subparsers = parser.add_subparsers(
         title="commands",
-        description='valid subcommands',
-        help='additional help'
+        description="Actions to perform",
+        required = True
     )
 
     parser_instances = subparsers.add_parser("instances", help="Chose relevant instances by analysis of followers")
-    parser_instances.add_argument("--user_urls", type=argparse.FileType("r"))
-    parser_instances.add_argument("--follower_count", type=int)
-    parser_instances.add_argument("--min_followers", type=int)
-    parser_instances.add_argument("--save_followers", type=argparse.FileType("w"))
+    parser_instances.add_argument("--user_urls", help="File with urls to user profiles", type=argparse.FileType("r"))
+    parser_instances.add_argument("--user_count", help="Disregard instances with less than user_count users", default=10, type=int)
+    parser_instances.add_argument("--max_followers", help="The maximum number of followers per user profile", default=200, type=int)
+    parser_instances.add_argument("--save_followers", help="File to save the gathered follower accounts to", type=argparse.FileType("w"))
 
-    parser_instances.add_argument("--sort_by", default="active_users", type=str)
-    parser_instances.add_argument("--min_active_users", default=None, type=int)
-    parser_instances.add_argument("--min_users", default=None, type=int)
-    parser_instances.add_argument("--count", default=5, type=int)
-    parser_instances.add_argument("--language", default=None, type=str)
+    parser_instances.add_argument("--sort_by", help="Order or the requested instances", choices=["name", "uptime", "https_score", "obs_score", "users", "statuses", "connections", "active_users"], default="active_users", type=str)
+    parser_instances.add_argument("--min_active_users", help="Minimum number of active users", default=None, type=int)
+    parser_instances.add_argument("--min_users", help="Minimum number of users", default=None, type=int)
+    parser_instances.add_argument("--count", help="Number of instances returned", default=5, type=int)
+    parser_instances.add_argument("--language", help="Languages of the instances", default=None, type=str)
 
-    parser_instances.add_argument("--instances_file", type=str)
+    parser_instances.add_argument("--instances_file", help="File to save instance metadata to", type=str)
     parser_instances.set_defaults(func=run_instances)
 
     parser_hashtag = subparsers.add_parser("hashtag", help="Continuously gather toots that contain a hashtag")
-    parser_hashtag.add_argument("--tag", type=str)
-    parser_hashtag.add_argument("--instances", type=argparse.FileType("r"))
-    parser_hashtag.add_argument("--data_dir", type=str)
-    parser_hashtag.add_argument("--start_date", type=str)
-    parser_hashtag.add_argument("--local_only", action="store_true")
+    parser_hashtag.add_argument("--tag", help="Hashtag to gather", type=str)
+    parser_hashtag.add_argument("--instances", help="File with urls to instances", type=argparse.FileType("r"))
+    parser_hashtag.add_argument("--data_dir", help="Directory where gathered data is saved", type=str)
+    parser_hashtag.add_argument("--start_date", help="Start data gathering at this date (YYYY-MM-DD)", type=date)
+    parser_hashtag.add_argument("--local_only", help="Only gather toots local to the queried instances", action="store_true")
     parser_hashtag.set_defaults(func=run_hashtag)
 
     parser_public = subparsers.add_parser("public", help="Continuously gather (filtered) public toots")
-    parser_public.add_argument("--instances", type=argparse.FileType("r"))
-    parser_public.add_argument("--data_dir", type=str)
-    parser_public.add_argument("--start_date", type=str)
-    parser_public.add_argument("--local_only", action="store_true")
-    parser_public.add_argument("--filter", type=str)
+    parser_public.add_argument("--instances", help="File with urls to instances", type=argparse.FileType("r"))
+    parser_public.add_argument("--data_dir", help="Directory where gathered data is saved", type=str)
+    parser_public.add_argument("--start_date", help="Start data gathering at this date (YYYY-MM-DD)", type=date)
+    parser_public.add_argument("--local_only", help="Only gather toots local to the queried instances", action="store_true")
+    parser_public.add_argument("--filter", help="String to filter queried toots with", type=str)
     parser_public.set_defaults(func=run_public)
 
     parser_sample = subparsers.add_parser("sample", help="Sample public toots over a period of time")
-    parser_sample.add_argument("--instances", type=argparse.FileType("r"))
-    parser_sample.add_argument("--data_dir", type=str)
-    parser_sample.add_argument("--start_date", type=date)
-    parser_sample.add_argument("--end_date", type=date)
-    parser_sample.add_argument("--chunk_size", type=int)
-    parser_sample.add_argument("--filter", type=str)
-    parser_sample.add_argument("--days_between", type=int)
-    parser_sample.add_argument("--local_only", action="store_true")
-
+    parser_sample.add_argument("--instances", help="File with urls to instances", type=argparse.FileType("r"))
+    parser_sample.add_argument("--data_dir", help="Directory where gathered data is saved", type=str)
+    parser_sample.add_argument("--start_date", help="Start data gathering at this date (YYYY-MM-DD)", type=date)
+    parser_sample.add_argument("--end_date", help="End data gathering at this date (YYYY-MM-DD)", type=date)
+    parser_sample.add_argument("--chunk_size", help="Number of toots in chunk", default=100, type=int)
+    parser_sample.add_argument("--days_between", default=7, type=int)
+    parser_sample.add_argument("--filter", help="String to filter queried toots with", type=str)
+    parser_sample.add_argument("--local_only", help="Only gather toots local to the queried instances", action="store_true")
     parser_sample.set_defaults(func=run_sample)
 
     parser_interactions = subparsers.add_parser("interactions", help="Gather interactions with toots")
-    parser_interactions.add_argument("--toots", type=argparse.FileType("r"))
-    parser_interactions.add_argument("--out_file", type=argparse.FileType("w"))
-    parser_interactions.add_argument("--format", default="json", type=str)
+    parser_interactions.add_argument("--toots", help="json-file with toots", type=argparse.FileType("r"))
+    parser_interactions.add_argument("--out_file", help="File to save interactions in", type=argparse.FileType("w"))
+    parser_interactions.add_argument("--format", help="Format of output file", choices=["json", "csv"], default="json", type=str)
     parser_interactions.set_defaults(func=run_interactions)
 
     parser_trends = subparsers.add_parser("trends", help="Continuously gather trends")
-    parser_trends.add_argument("--instances", type=int)
-    parser_trends.add_argument("--data_dir", type=str)
-
+    parser_trends.add_argument("--instances", help="File with urls to instances", type=argparse.FileType("r"))
+    parser_trends.add_argument("--data_dir", help="Directory where gathered data is saved", type=str)
+    parser_trends.set_defaults(func=run_trends)
+    
     parser_export = subparsers.add_parser("export", help="Export data")
-    parser_export.add_argument("--data_dir", type=str)
-    parser_export.add_argument("--format", default="csv", type=str)
-    parser_export.add_argument("--out_file", type=str)
-    parser_export.add_argument("--parse_html", action="store_true")
-    parser_export.add_argument("--aggregate", action="store_true")
+    parser_export.add_argument("--data_dir", help="Directory to export data from", type=str)
+    parser_export.add_argument("--format", help="Format of the exported file", choices=["json", "csv"], default="csv", type=str)
+    parser_export.add_argument("--out_file", help="File to export data to", type=str)
+    parser_export.add_argument("--parse_html", help="Convert html in toot content and user notes to clean text", action="store_true")
+    parser_export.add_argument("--aggregate", help="Aggregate toots over instances timelines", action="store_true")
     parser_export.set_defaults(func=run_export)
 
     args = parser.parse_args()
     args.func(args)
-    
 
 if __name__ == '__main__':
     main()
