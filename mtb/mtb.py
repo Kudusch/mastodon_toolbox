@@ -3,6 +3,7 @@ import csv
 import json
 import sys
 from os import path, listdir
+from shutil import rmtree
 from datetime import datetime
 from collections import Counter
 from statistics import mean
@@ -11,15 +12,19 @@ from . import functions as mf
 
 logger = logging.getLogger("mastodon_functions")
 
+def run_cleanup(args):
+    rmtree("build")
+    rmtree("mtb.egg-info")
+
 def run_instances(args):
     if args.user_urls:
         user_urls = [user.strip() for user in args.user_urls.readlines()]
-        print(f"Getting {args.follower_count} followers for {len(user_urls)} accounts")
+        print(f"Getting {args.max_followers} followers for {len(user_urls)} accounts")
 
         all_followers = []
         for account_url in user_urls:
             try:
-                followers = mf.get_account_followers(account_url, max_followers = args.follower_count, verbose = False)
+                followers = mf.get_account_followers(account_url, max_followers = args.max_followers, verbose = False)
                 all_followers.extend(followers)
                 message = f"Got {len(followers)} followers of {account_url}"
                 print(f'{message: <70}', end = "\r")
@@ -33,14 +38,15 @@ def run_instances(args):
                 writer.writerow(follower+[account_url])
             args.save_followers.close()
 
-        if args.instances_file:
-            message = f"Got {len(set([a['url'] for a in all_followers]))} followers for {len(user_urls)} accounts"
-            print(f'{message: <70}', end = "\n\n")
-            domains = [mf.acct_to_string(follower).split("@")[1] for follower in all_followers]
-            domains = [domain for domain, count in Counter(domains).most_common() if count >= args.min_followers]
-            print(f"These are the most common domains with at least {args.min_followers} accounts:\n")
-            for instance in domains:
-                print(instance)
+        message = f"Got {len(set([a['url'] for a in all_followers]))} followers for {len(user_urls)} accounts"
+        print(f'{message: <70}', end = "\n\n")
+        domains = [mf.acct_to_string(follower).split("@")[1] for follower in all_followers]
+        domains = [domain for domain, count in Counter(domains).most_common() if count >= args.min_user_count]
+        print(f"These are the most common domains with at least {args.min_user_count} accounts:\n")
+        for instance in domains:
+            print(instance)
+
+        if args.instances_file:    
             instances = mf.get_instances_by_url(domains, file_name = args.instances_file)
     else:
         print(f"Getting instances that match the following criteria:")
@@ -408,7 +414,7 @@ def main():
 
     parser_instances = subparsers.add_parser("instances", help="Chose relevant instances by analysis of followers")
     parser_instances.add_argument("--user_urls", help="File with urls to user profiles", type=argparse.FileType("r"))
-    parser_instances.add_argument("--user_count", help="Disregard instances with less than user_count users", default=10, type=int)
+    parser_instances.add_argument("--min_user_count", help="Disregard instances with less than user_count users", default=10, type=int)
     parser_instances.add_argument("--max_followers", help="The maximum number of followers per user profile", default=200, type=int)
     parser_instances.add_argument("--save_followers", help="File to save the gathered follower accounts to", type=argparse.FileType("w"))
 
@@ -466,6 +472,9 @@ def main():
     parser_export.add_argument("--parse_html", help="Convert html in toot content and user notes to clean text", action="store_true")
     parser_export.add_argument("--aggregate", help="Aggregate toots over instances timelines", action="store_true")
     parser_export.set_defaults(func=run_export)
+    
+    parser_cleanup = subparsers.add_parser("clean", help="Clean a fresh installation")
+    parser_cleanup.set_defaults(func=run_cleanup)
 
     args = parser.parse_args()
     args.func(args)
