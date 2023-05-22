@@ -55,42 +55,6 @@ def get_datetime_range(toots):
     values = [t["created_at"] for t in toots]
     return(f"created_at from {min(values):%Y-%m-%d %H:%M} to {max(values):%Y-%m-%d %H:%M}")
 
-def daterange(start_date, end_date, days=0, hours=0, months=0, years=0):
-    if months != 0:
-        cur_date = start_date
-        while end_date > cur_date:
-            if cur_date.month+months > 12:
-                y = int((cur_date.month+months)/12)
-                m = (cur_date.month+months) % 12
-            else:
-                y = 0
-                m = cur_date.month+months
-            next_date = datetime(cur_date.year+y, m, cur_date.day, cur_date.hour, cur_date.minute, cur_date.second)
-            if (next_date > end_date):
-                yield (cur_date, end_date)
-            else:
-                yield (cur_date, next_date)
-            cur_date = next_date
-    elif years != 0:
-        cur_date = start_date
-        while end_date > cur_date:
-            next_date = datetime(cur_date.year+years, cur_date.month, cur_date.day, cur_date.hour, cur_date.minute, cur_date.second)
-            if (next_date > end_date):
-                yield (cur_date, end_date)
-            else:
-                yield (cur_date, next_date)
-            cur_date = next_date
-    elif days != 0 or hours != 0:
-        delta = timedelta(hours = hours, days = days)
-        cur_date = start_date
-        while end_date > cur_date:
-            next_date = cur_date + delta
-            if (next_date > end_date):
-                yield (cur_date, end_date)
-            else:
-                yield (cur_date, next_date)
-            cur_date = next_date
-
 def parse_toot_html(html):
     toot_content = BeautifulSoup(html, "html.parser")
     for e in toot_content.find_all(["p", "br"]):
@@ -832,13 +796,17 @@ def get_instances_by_url(urls, file_name = None, include_peers = False, parse_ht
         else:
             access_token = None
         api = mastodon.Mastodon(api_base_url = api_base, request_timeout = request_timeout, access_token=access_token)
-        instance = api.instance()
+        try:
+            instance = api.instance()
+        except:
+            instance = None
         try:
             activity = api.instance_activity()
         except:
             activity = None
         instances[api_base] = {"instance":instance, "activity":activity, "queried_at":datetime.now()}
-        logger.info(f"Retrieved info for {api_base} ({instance['stats']['user_count']} users and {instance['stats']['status_count']} posts)")
+        if instance:
+            logger.info(f"Retrieved info for {api_base} ({instance['stats']['user_count']} users and {instance['stats']['status_count']} posts)")
 
     if file_name and ".csv" in file_name:
         with open(file_name, "w") as f:
