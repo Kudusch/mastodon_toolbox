@@ -4,17 +4,28 @@ import json
 import sys
 from os import path, listdir
 from shutil import rmtree
-from datetime import datetime
+from datetime import datetime, timedelta
 from collections import Counter
 from statistics import mean
 import logging
+from glob import glob
+from boltons import timeutils
+from tqdm import tqdm
 from . import functions as mf
 
 logger = logging.getLogger("mastodon_functions")
 
 def run_cleanup(args):
-    rmtree("build")
-    rmtree("mtb.egg-info")
+    try:
+        rmtree("build")
+    except:
+        pass
+    try:
+        rmtree("mtb.egg-info")
+    except:
+        pass
+    print("Build artefacts are cleaned")
+    
 
 def run_instances(args):
     if args.user_urls:
@@ -246,14 +257,19 @@ def run_interactions(args):
             writer.writerow(row)
 
 
-def run_export(args):
-    if path.exists(f"{args.data_dir}/search_config.json"): 
-        with open(f"{args.data_dir}/search_config.json", "r") as f:
-            config_file = json.load(f)
+def run_export(args):    
+    if path.exists(f"{args.data_dir}/search_config.json") or args.data_files: 
         timelines = {}
-        files = [f for f in listdir(args.data_dir) if not f.startswith(".") and f != "search_config.json" and f.endswith(".json")]
+        if args.data_files:
+            files = []
+            for arg in args.data_files:
+                files += glob(arg)
+        else:
+            with open(f"{args.data_dir}/search_config.json", "r") as f:
+                config_file = json.load(f)
+            files = [f"{args.data_dir}/{f}" for f in listdir(args.data_dir) if not f.startswith(".") and f != "search_config.json" and f.endswith(".json")]
         for fname in files:
-            with open(f"{args.data_dir}/{fname}", "r") as f:
+            with open(f"{fname}", "r") as f:
                 for k, v in json.load(f).items():
                     if v:
                         if k in timelines:
@@ -332,8 +348,6 @@ def run_export(args):
         
         for instance, statuses in all_statuses.items():
             mf.toots_to_csv(statuses, file_name = "statuses.csv", parse_html = args.parse_html, instance_name = instance, append=True, verbose=False)
-            
-        
 
 def run_sample(args):
     timelines = {}
@@ -360,19 +374,26 @@ def run_sample(args):
         start_date = args.start_date
         end_date = args.end_date
         max_id = (int(round(start_date.timestamp())) * 1000) << 16
-
-        for date_range in mf.daterange(start_date, end_date, days=args.days_between):
-            from_date, to_date = date_range
+        
+        for date_range in timeutils.daterange(start_date, end_date, step=(0, 0, args.days_between), inclusive=True):
+            from_date = date_range
+            to_date = date_range + timedelta(days = args.days_between)
             chunk = mf.search_public(instance, access_token, max_toots = args.chunk_size, max_id=max_id, verbose=False)
-            timelines[instance].extend(mf.filter_toots(chunk, query=args.filter))
-            max_id = (int(round(from_date.timestamp())) * 1000) << 16
-            logger.setLevel(logging.INFO)
-            logger.info(f"Got {len(timelines[instance])} toots from {instance}, last chunk {mf.get_datetime_range(chunk)}")
-            logger.setLevel(logging.WARNING)
-        # except Exception as e:
-        #     print(e)
+            try:
+                timelines[instance].extend(mf.filter_toots(chunk, query=args.filter))
+                max_id = (int(round(from_date.timestamp())) * 1000) << 16
+                message = f"Got {len(timelines[instance])} toots from {instance}, last chunk {mf.get_datetime_range(chunk)}"
+                print(f'{message: <70}', end = "\r")
+            except:
+                timelines[instance] = None
+                break
     if not all([isinstance(timeline, type(None)) for timeline in timelines.values()]):
-        with open(f"{args.data_dir}/{datetime.now().strftime('%s')}_timelines.json", "w") as f:
+        if args.data_file:
+            file_name = args.data_file
+        else:
+            file_name = f"{datetime.now().strftime('%s')}_timelines.json"
+        print(f"Sampled {sum([len(tl) for tl in timelines.values() if tl])} posts from {len(timelines)} instances")
+        with open(file_name, "w") as f:
             json.dump(timelines, f, default=str)
             
 def run_trends(args):
@@ -445,7 +466,7 @@ def main():
 
     parser_sample = subparsers.add_parser("sample", help="Sample public toots over a period of time")
     parser_sample.add_argument("--instances", help="File with urls to instances", type=argparse.FileType("r"))
-    parser_sample.add_argument("--data_dir", help="Directory where gathered data is saved", type=str)
+    parser_sample.add_argument("--data_file", help="File where gathered data is saved", type=str)
     parser_sample.add_argument("--start_date", help="Start data gathering at this date (YYYY-MM-DD)", type=date)
     parser_sample.add_argument("--end_date", help="End data gathering at this date (YYYY-MM-DD)", type=date)
     parser_sample.add_argument("--chunk_size", help="Number of toots in chunk", default=100, type=int)
@@ -467,6 +488,7 @@ def main():
     
     parser_export = subparsers.add_parser("export", help="Export data")
     parser_export.add_argument("--data_dir", help="Directory to export data from", type=str)
+    parser_export.add_argument("--data_files", nargs="*") 
     parser_export.add_argument("--format", help="Format of the exported file", choices=["json", "csv"], default="csv", type=str)
     parser_export.add_argument("--out_file", help="File to export data to", type=str)
     parser_export.add_argument("--parse_html", help="Convert html in toot content and user notes to clean text", action="store_true")
