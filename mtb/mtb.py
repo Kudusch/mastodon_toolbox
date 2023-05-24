@@ -97,7 +97,8 @@ def run_hashtag(args):
             args.instances.close()
         print(f"Initialising a search on {len(instances)} instances for #{hashtag} in ./{args.data_dir}", end = "\n")
         try:
-            min_id = datetime.strptime(args.start_date, "%Y-%m-%d")
+            min_id = args.start_date
+            #min_id = datetime.strptime(args.start_date, "%Y-%m-%d")
             #min_id = (int(round(datetime.strptime(args.start_date, "%Y-%m-%d").timestamp())) * 1000) << 16
             min_ids = dict([(k, min_id) for k in instances])
         except:
@@ -105,6 +106,11 @@ def run_hashtag(args):
             exit()
 
         local_only = args.local_only
+        
+        if args.end_date:
+            end_date = (int(round(args.end_date.timestamp())) * 1000) << 16
+        else:
+            end_date = None
     else:
         with open(f"{args.data_dir}/search_config.json", "r") as f:
             config_file = json.load(f)
@@ -113,6 +119,7 @@ def run_hashtag(args):
             instances = config_file["instances"]
             local_only = config_file["local_only"]
             min_ids = config_file["min_ids"]
+            end_date =config_file["end_date"] 
         print(f"Refreshing timelines from {args.data_dir} on {len(instances)} instances, last checked at {last_checked:%Y-%m-%d %H:%M:%S}", end = "\n")
 
     timelines = {}
@@ -121,7 +128,7 @@ def run_hashtag(args):
             access_token = mf.access_tokens[instance]
         else:
             access_token = None
-        toots = mf.search_hashtag(hashtag, instance, access_token = access_token, local_only = args.local_only,min_id = min_ids[instance], verbose=True)
+        toots = mf.search_hashtag(hashtag, instance, access_token = access_token, local_only = args.local_only, min_id = min_ids[instance], max_id = end_date, verbose=True)
         timelines[instance] = mf.filter_toots(toots)
 
     if not all([isinstance(timeline, type(None)) for timeline in timelines.values()]):
@@ -139,6 +146,7 @@ def run_hashtag(args):
             "instances":instances,
             "local_only":local_only,
             "min_ids":min_ids,
+            "end_date":end_date,
             "last_checked":datetime.now().timestamp()
         }
         json.dump(config, f, default=str)
@@ -453,6 +461,7 @@ def main():
     parser_hashtag.add_argument("--instances", help="File with urls to instances", type=argparse.FileType("r"))
     parser_hashtag.add_argument("--data_dir", help="Directory where gathered data is saved", type=str)
     parser_hashtag.add_argument("--start_date", help="Start data gathering at this date (YYYY-MM-DD)", type=date)
+    parser_hashtag.add_argument("--end_date", help="End data gathering at this date (YYYY-MM-DD)", type=date)
     parser_hashtag.add_argument("--local_only", help="Only gather toots local to the queried instances", action="store_true")
     parser_hashtag.set_defaults(func=run_hashtag)
 

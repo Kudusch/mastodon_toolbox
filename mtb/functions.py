@@ -869,7 +869,7 @@ def search_public(api_base, query = None, access_token = None, min_id = None, ma
 
     return queried_toots
 
-def search_hashtag(queried_hashtag, api_base, access_token = None, min_id = None, local_only = False, verbose = False, request_timeout = 30):
+def search_hashtag(queried_hashtag, api_base, access_token = None, min_id = None, max_id = None, local_only = False, verbose = False, request_timeout = 30):
     if verbose and logger.level >= 20:
         logger.setLevel(logging.INFO)
 
@@ -881,8 +881,6 @@ def search_hashtag(queried_hashtag, api_base, access_token = None, min_id = None
 
     if (not isinstance(min_id, datetime)):
         min_id = int(min_id)
-    
-    #print(format_snowflake(min_id))
 
     queried_toots = []
     try:
@@ -912,6 +910,8 @@ def search_hashtag(queried_hashtag, api_base, access_token = None, min_id = None
             if len(new_toots) > 0:
                 queried_toots.extend(add_queried_at(new_toots))
                 logger.info(f"Got {len(queried_toots)} toots from {api_base} ({api.ratelimit_remaining} calls remaining, reset at {datetime.fromtimestamp(api.ratelimit_reset):%Y-%m-%d %H:%M:%S})")
+                if any([t["id"] > max_id for t in new_toots]):
+                    paginate = False
             else:
                 paginate = False
         except:
