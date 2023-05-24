@@ -8,11 +8,12 @@ This collection of software is meant to facilitate the gathering and analysis of
 
 # Installation
 
-`git clone https://github.com/Kudusch/mastodon_toolbox`
-`cd mastodon_toolbox`
-`virtualenv -p python3 venv`
-`source venv/bin/activate`
-`python -m pip install .`
+```git clone https://github.com/Kudusch/mastodon_toolbox
+cd mastodon_toolbox
+virtualenv -p python3 venv
+source venv/bin/activate
+python -m pip install .
+```
 
 Add API keys to `config_example.ini` and rename to `config.ini`
 
@@ -21,6 +22,7 @@ Add API keys to `config_example.ini` and rename to `config.ini`
 ## Chose relevant instances by analysis of followers 
 
 `mtb instances --users user.txt`
+
 `mtb instances --sort_by active_users --min_active_users 0 --min_users 0 --count 5 --language "de"`
 
 ## Continuously gather toots that contain a hashtag
