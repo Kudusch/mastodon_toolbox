@@ -1,4 +1,5 @@
 import argparse
+import traceback
 import csv
 import json
 import sys
@@ -265,7 +266,10 @@ def run_interactions(args):
             writer.writerow(row)
 
 
-def run_export(args):    
+def run_export(args):
+    if not args.out_file:
+        args.out_file = open(f"{int(datetime.now().timestamp())}_export.{args.format}", "w")
+
     if path.exists(f"{args.data_dir}/search_config.json") or args.data_files: 
         timelines = {}
         if args.data_files:
@@ -285,20 +289,20 @@ def run_export(args):
                         else:
                             timelines[k] = v
         
-        with open(f"{args.out_file}", "w") as out_file:
+        try:
             if args.format == "json":
                 if args.aggregate:
                     toots = []
                     for instance, uri, toot in mf.aggregate_timelines(timelines):
                         toots.append(toot)
-                    json.dump(toots, out_file, default=str)
-                    print(f"Wrote {len(toots)} unique toots to {out_file.name}")
+                    json.dump(toots, args.out_file, default=str)
+                    print(f"Wrote {len(toots)} unique toots to {args.out_file.name}")
                 else:
-                    json.dump(timelines, out_file, default=str)
+                    json.dump(timelines, args.out_file, default=str)
                     print(f"Wrote toots from {len(timelines.keys())} instances to {out_file.name}")
                 
             elif args.format == "csv":
-                writer = csv.writer(out_file, dialect="unix")
+                writer = csv.writer(args.out_file, dialect="unix")
                 writer.writerow(mf.key_names)
                 if args.aggregate:
                     n_toots = 0
@@ -306,13 +310,17 @@ def run_export(args):
                         toot = mf.toots_to_lines([toot], parse_html = args.parse_html, instance_name = instance, verbose=False)
                         writer.writerow(toot[0])
                         n_toots += 1
-                    print(f"Wrote {n_toots} toots from {len(timelines.keys())} instances to {out_file.name}")
+                    print(f"Wrote {n_toots} toots from {len(timelines.keys())} instances to {args.out_file.name}")
                 else:
                     for instance, toots in timelines.items():
                         toots = mf.toots_to_lines(toots, parse_html = args.parse_html, instance_name = instance, verbose=False)
                         for toot in toots:
                             writer.writerow(toot)
-                    print(f"Wrote toots from {len(timelines.keys())} instances to {out_file.name}")
+                    print(f"Wrote toots from {len(timelines.keys())} instances to {args.out_file.name}")
+        except Exception as e:
+            traceback.print_exc()
+        finally:
+            args.out_file.close()
     else:
         files = [f for f in listdir(args.data_dir) if not f.startswith(".") and f.endswith("_trends.json")]
         all_tags = {}
@@ -486,7 +494,7 @@ def main():
 
     parser_interactions = subparsers.add_parser("interactions", help="Gather interactions with toots")
     parser_interactions.add_argument("--toots", help="json-file with toots", type=argparse.FileType("r"))
-    parser_interactions.add_argument("--out_file", help="File to save interactions in", type=argparse.FileType("w"))
+    parser_interactions.add_argument("--out_file", help="File to save interactions in", default=f"{int(datetime.now().timestamp())}_interactions.json", type=argparse.FileType("w"))
     parser_interactions.add_argument("--format", help="Format of output file", choices=["json", "csv"], default="json", type=str)
     parser_interactions.set_defaults(func=run_interactions)
 
@@ -499,7 +507,7 @@ def main():
     parser_export.add_argument("--data_dir", help="Directory to export data from", type=str)
     parser_export.add_argument("--data_files", nargs="*") 
     parser_export.add_argument("--format", help="Format of the exported file", choices=["json", "csv"], default="csv", type=str)
-    parser_export.add_argument("--out_file", help="File to export data to", type=str)
+    parser_export.add_argument("--out_file", help="File to export data to", type=argparse.FileType("w"))
     parser_export.add_argument("--parse_html", help="Convert html in toot content and user notes to clean text", action="store_true")
     parser_export.add_argument("--aggregate", help="Aggregate toots over instances timelines", action="store_true")
     parser_export.set_defaults(func=run_export)
