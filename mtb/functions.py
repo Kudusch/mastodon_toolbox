@@ -47,6 +47,8 @@ trends_key_names = {
     "links":["url", "title", "description", "type", "author_name", "author_url", "provider_name", "provider_url", "html", "width", "height", "image", "embed_url", "blurhash"]
 }
 
+USER_AGENT = "mastodon_toolbox/1.0 (+https://github.com/Kudusch/mastodon_toolbox)"
+
 config = configparser.ConfigParser()
 config.read("config.ini")
 access_tokens = config["MASTODON"]
@@ -560,7 +562,7 @@ def get_toots_reblogs(toots, request_timeout = 15, verbose = False):
         try:
             api_base = get_home_instance(t)
             home_id = get_home_id(t)
-            api = mastodon.Mastodon(api_base_url = api_base, access_token = None, request_timeout = request_timeout)
+            api = mastodon.Mastodon(api_base_url = api_base, access_token = None, request_timeout = request_timeout, user_agent=USER_AGENT)
         except:
             logger.warning(f"Issues with {t['uri']}")
             reblogs[t["uri"]]["source"] = "error"
@@ -608,7 +610,7 @@ def get_toots_favourites(toots, request_timeout = 15, verbose = False):
         try:
             api_base = get_home_instance(t)
             home_id = get_home_id(t)
-            api = mastodon.Mastodon(api_base_url = api_base, access_token = None, request_timeout = request_timeout)
+            api = mastodon.Mastodon(api_base_url = api_base, access_token = None, request_timeout = request_timeout, user_agent=USER_AGENT)
         except:
             logger.warning(f"Issues with {t['uri']}")
             favs[t["uri"]]["source"] = "error"
@@ -657,7 +659,7 @@ def get_toots_context(toots, request_timeout = 15, verbose = False):
         try:
             api_base = get_home_instance(t)
             home_id = get_home_id(t)
-            api = mastodon.Mastodon(api_base_url = api_base, access_token = None, request_timeout = request_timeout)
+            api = mastodon.Mastodon(api_base_url = api_base, access_token = None, request_timeout = request_timeout, user_agent=USER_AGENT)
         except:
             logger.warning(f"Issues with {t['uri']}")
             context[t["uri"]]["source"] = "error"
@@ -693,7 +695,7 @@ def get_account_followers(account_url, max_followers=None, verbose = False, requ
         logger.setLevel(logging.INFO)
 
     api_base = urlparse(account_url).netloc
-    api = mastodon.Mastodon(api_base_url = api_base, request_timeout = request_timeout)
+    api = mastodon.Mastodon(api_base_url = api_base, request_timeout = request_timeout, user_agent=USER_AGENT)
     account_name = account_url.split("@")[-1]
     account = api.search_v2(f"@{account_name}@{api_base}", resolve=False, result_type="accounts")["accounts"][0]
     if max_followers:
@@ -741,7 +743,7 @@ def get_accounts_by_url(urls, file_name = None, parse_html = False,request_timeo
     accounts = []
     for url in urls:
         api_base = urlparse(url).netloc
-        api = mastodon.Mastodon(api_base_url = api_base, request_timeout = request_timeout)
+        api = mastodon.Mastodon(api_base_url = api_base, request_timeout = request_timeout, user_agent=USER_AGENT)
         account_name = url.split("@")[-1]
         account = api.search_v2(f"@{account_name}@{api_base}", resolve=False, result_type="accounts")["accounts"][0]
         accounts.append(account)
@@ -763,7 +765,7 @@ def get_instance_trends(api_base, access_token = None, verbose = False, request_
         logger.setLevel(logging.INFO)
     
     try:
-        api = mastodon.Mastodon(api_base_url = api_base, access_token = access_token, request_timeout = request_timeout, ratelimit_method = "pace")
+        api = mastodon.Mastodon(api_base_url = api_base, access_token = access_token, request_timeout = request_timeout, ratelimit_method = "pace", user_agent=USER_AGENT)
         trends = {
             "tags":api.trending_tags(),
             "statuses":add_queried_at(api.trending_statuses()),
@@ -794,7 +796,7 @@ def get_instances_by_url(urls, file_name = None, include_peers = False, parse_ht
             access_token = access_tokens[api_base]
         else:
             access_token = None
-        api = mastodon.Mastodon(api_base_url = api_base, request_timeout = request_timeout, access_token=access_token)
+        api = mastodon.Mastodon(api_base_url = api_base, request_timeout = request_timeout, access_token=access_token, user_agent=USER_AGENT)
         try:
             instance = api.instance()
         except:
@@ -824,7 +826,7 @@ def search_public(api_base, query = None, access_token = None, min_id = None, ma
     if verbose and logger.level >= 20:
         logger.setLevel(logging.INFO)
 
-    api = mastodon.Mastodon(api_base_url = api_base, access_token = access_token, request_timeout = request_timeout, ratelimit_method = "pace")
+    api = mastodon.Mastodon(api_base_url = api_base, access_token = access_token, request_timeout = request_timeout, ratelimit_method = "pace", user_agent=USER_AGENT)
 
     if min_id and (not isinstance(min_id, datetime)):
         min_id = int(min_id)
@@ -872,7 +874,7 @@ def search_hashtag(queried_hashtag, api_base, access_token = None, min_id = None
     if verbose and logger.level >= 20:
         logger.setLevel(logging.INFO)
 
-    api = mastodon.Mastodon(api_base_url = api_base, access_token = access_token, request_timeout = request_timeout, ratelimit_method = "pace")
+    api = mastodon.Mastodon(api_base_url = api_base, access_token = access_token, request_timeout = request_timeout, ratelimit_method = "pace", user_agent=USER_AGENT)
 
     if queried_hashtag[0] == "#":
         logger.warning(f"Leading '#' was removed from queried hashtag.")
@@ -954,7 +956,7 @@ def stream_timeline(api_bases, access_token=None, max_toots=None, timeframe=None
     try:
         for api_base in api_bases:
             print(api_base)
-            api = mastodon.Mastodon(api_base_url = api_base, access_token = access_token)
+            api = mastodon.Mastodon(api_base_url = api_base, access_token = access_token, user_agent=USER_AGENT)
             stream_listener = Sampler(file_name=f"{dir_name}/{api_base}.json")
             streams.append((api_base, api.stream_public(listener = stream_listener, run_async = True, reconnect_async = True, reconnect_async_wait_sec = 30), stream_listener))
         while time_passed < timeframe:
