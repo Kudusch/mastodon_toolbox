@@ -789,9 +789,8 @@ def get_instances_by_url(urls, file_name = None, include_peers = False, parse_ht
         exit()
 
     instances = {}
-    for url in urls:
-        api_base = url
-        if url in access_tokens.keys():
+    for api_base in urls:
+        if api_base in access_tokens.keys():
             access_token = access_tokens[api_base]
         else:
             access_token = None

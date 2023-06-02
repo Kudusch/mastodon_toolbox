@@ -31,7 +31,7 @@ def run_cleanup(args):
 def run_instances(args):
     if args.user_urls:
         user_urls = [user.strip() for user in args.user_urls.readlines()]
-        print(f"Getting {args.max_followers} followers for {len(user_urls)} accounts")
+        print(f"Getting up to {args.max_followers} followers for {len(user_urls)} accounts")
 
         all_followers = []
         for account_url in user_urls:
@@ -53,13 +53,16 @@ def run_instances(args):
         message = f"Got {len(set([a['url'] for a in all_followers]))} followers for {len(user_urls)} accounts"
         print(f'{message: <70}', end = "\n\n")
         domains = [mf.acct_to_string(follower).split("@")[1] for follower in all_followers]
-        domains = [domain for domain, count in Counter(domains).most_common() if count >= args.min_user_count]
-        print(f"These are the most common domains with at least {args.min_user_count} accounts:\n")
-        for instance in domains:
-            print(instance)
+        domains = [(domain, count) for domain, count in Counter(domains).most_common() if count >= args.min_users_per_domain]
+        
+        with open(args.instances_file, "w") as f: 
+            print(f"These are the most common domains with at least {args.min_users_per_domain} accounts:\n")            
+            for instance, count in domains:
+                f.write(f"{instance}\n")
+                print(f"{instance}: {count} users")
 
-        if args.instances_file:    
-            instances = mf.get_instances_by_url(domains, file_name = args.instances_file)
+        if args.save_instances_meta:    
+            instances = mf.get_instances_by_url([domain for domain, count in domains], file_name = args.save_instances_meta)
     else:
         print(f"Getting instances that match the following criteria:")
         if args.sort_by:
@@ -75,11 +78,15 @@ def run_instances(args):
         instances = mf.get_instances(sort_by=args.sort_by, min_active_users=args.min_active_users, min_users=args.min_users, count=args.count, language=args.language)
         if not instances:
             exit("nothing")
-        print("\nThese are the instances returned by instances.social:\n")
-        for instance in instances:
-            print(instance["name"])
-        if args.instances_file:
-            instances = mf.get_instances_by_url([instance["name"] for instance in instances], file_name = args.instances_file)
+        
+        with open(args.instances_file, "w") as f: 
+            print("\nThese are the instances returned by instances.social:\n")
+            for instance in instances:
+                f.write(f"{instance['name']}\n")
+                print(instance["name"])
+        
+        if args.save_instances_meta:    
+            instances = mf.get_instances_by_url([instance["name"] for instance in instances], file_name = args.save_instances_meta)
 
 
 def run_hashtag(args):
@@ -449,17 +456,18 @@ def main():
 
     parser_instances = subparsers.add_parser("instances", help="Chose relevant instances by analysis of followers")
     parser_instances.add_argument("--user_urls", help="File with urls to user profiles", type=argparse.FileType("r"))
-    parser_instances.add_argument("--min_user_count", help="Disregard instances with less than user_count users", default=10, type=int)
-    parser_instances.add_argument("--max_followers", help="The maximum number of followers per user profile", default=200, type=int)
-    parser_instances.add_argument("--save_followers", help="File to save the gathered follower accounts to", type=argparse.FileType("w"))
+    parser_instances.add_argument("--min_users_per_domain", help="Disregard instances with less than user_count users (default: 10)", default=10, type=int)
+    parser_instances.add_argument("--max_followers", help="The maximum number of followers per user profile (default: 200)", default=200, type=int)
+    parser_instances.add_argument("--save_followers", help="File to save the gathered follower accounts to", nargs="?", const="followers_meta.csv", type=argparse.FileType("w"))
 
     parser_instances.add_argument("--sort_by", help="Order or the requested instances", choices=["name", "uptime", "https_score", "obs_score", "users", "statuses", "connections", "active_users"], default="active_users", type=str)
     parser_instances.add_argument("--min_active_users", help="Minimum number of active users", default=None, type=int)
     parser_instances.add_argument("--min_users", help="Minimum number of users", default=None, type=int)
-    parser_instances.add_argument("--count", help="Number of instances returned", default=5, type=int)
+    parser_instances.add_argument("--count", help="Number of instances returned (default: 5)", default=5, type=int)
     parser_instances.add_argument("--language", help="Languages of the instances", default=None, type=str)
 
-    parser_instances.add_argument("--instances_file", help="File to save instance metadata to", type=str)
+    parser_instances.add_argument("--save_instances_meta", help="File to save instance metadata to", nargs="?", const="instances_meta.csv", type=str)
+    parser_instances.add_argument("--instances_file", help="File to save the list of instance to", default="instances.txt", type=str)
     parser_instances.set_defaults(func=run_instances)
 
     parser_hashtag = subparsers.add_parser("hashtag", help="Continuously gather toots that contain a hashtag")
