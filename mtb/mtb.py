@@ -14,7 +14,7 @@ from boltons import timeutils
 from tqdm import tqdm
 from . import functions as mf
 
-logger = logging.getLogger("mastodon_functions")
+logger = logging.getLogger("functions")
 
 def run_cleanup(args):
     try:
@@ -99,8 +99,6 @@ def run_hashtag(args):
         print(f"Initialising a search on {len(instances)} instances for #{hashtag} in ./{args.data_dir}", end = "\n")
         try:
             min_id = args.start_date
-            #min_id = datetime.strptime(args.start_date, "%Y-%m-%d")
-            #min_id = (int(round(datetime.strptime(args.start_date, "%Y-%m-%d").timestamp())) * 1000) << 16
             min_ids = dict([(k, min_id) for k in instances])
         except:
             print("For new searches --start_date must be set (YYYY-MM-DD)", end = "\n")

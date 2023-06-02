@@ -22,13 +22,13 @@ logger = logging.getLogger(__name__)
 stream_handler = logging.StreamHandler()
 stream_handler.terminator = "\r"
 formatter = logging.Formatter(
-        '[%(levelname)s] | %(message)s | %(filename)s', 
+        '[%(levelname)s] | %(message)s', 
         "%Y-%m-%dT%H:%M:%S"
 )
 stream_handler.setFormatter(formatter)
 file_handler = logging.FileHandler("mastodon-tb.log")
 formatter = logging.Formatter(
-        '[%(levelname)s] | %(asctime)s | %(message)s | %(filename)s', 
+        '[%(levelname)s] | %(asctime)s | %(message)s', 
         "%Y-%m-%dT%H:%M:%S"
 )
 file_handler.setFormatter(formatter)
