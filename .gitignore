@@ -6,3 +6,4 @@ mastodon-tb.log
 mtb.egg*
 build/*
 data/*
+.nova
