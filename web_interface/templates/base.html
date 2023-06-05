@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>{% block title %}{% endblock %} - tootchive</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='pico.min.css') }}"/>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"/>
+    <script src="{{ url_for('static', filename='jquery-3.6.4.min.js') }}" charset="utf-8"></script>
+  </head>
+  <body>
+    {% with messages = get_flashed_messages() %} {% if messages %}
+    <div class="flash">
+      {% for message in messages %}
+      <p class="flash">{{ message }}</p>
+      {% endfor %}
+    </div>
+    {% endif %} {% endwith %}
+    <div id="head">{% block header %}{% endblock %}</div>
+    <div id="nav">
+      <ul>
+        <li><a href="{{ url_for('index') }}">Index</a><br /></li>
+        <li><a href="{{ url_for('instances') }}">Instances</a><br /></li>
+        <li><a href="{{ url_for('hashtag') }}">Hashtag</a><br /></li>
+        <li><a href="{{ url_for('public') }}">Public</a><br /></li>
+        <li><a href="{{ url_for('sample') }}">Sample</a><br /></li>
+        <li><a href="{{ url_for('interactions') }}">Interactions</a><br /></li>
+        <li><a href="{{ url_for('export') }}">Export</a><br /></li>
+      </ul>
+    </div>
+    <div id="content">
+      {% block content %}{% endblock %}
+    </div>
+    <div id="side">{% block side %}{% endblock %}</div>
+    <footer id="footer">Footer</footer>
+  </body>
+</html>

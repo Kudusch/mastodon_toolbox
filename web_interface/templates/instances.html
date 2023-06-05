@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+{% block header %}
+<h1>{% block title %}mastodon_toolbox - Instances{% endblock %}</h1>
+{% endblock %}
+
+{% block side %}
+{% endblock %}
+
+{% block content %}
+<div>
+<form>
+  <div class="form-group">
+    <label>User URLs*:</label> 
+    <textarea class="form-control" name="user_urls" placeholder="https://mastodon.social/@commodon@sciences.social
+https://h-net.social/@ecrea
+https://mastodon.online/@ICAHDQ
+https://…" required="required">
+</textarea>
+  </div>
+
+  <div class="form-group">
+    <label>Minimum users per domain:</label> <input type="text" class="form-control" name="min_users_per_domain" placeholder="10">
+  </div>
+
+  <div class="form-group">
+    <label>Maximum number of followers to analyze:</label> <input type="text" class="form-control" name="max_followers" placeholder="200">
+  </div>
+
+  <div class="form-group">
+    <label>Save metadata?</label>
+
+    <div class="form-check">
+      <input class="form-check-input" type="checkbox" name="save_followers" value="save_followers"> <label class="form-check-label">Save queried followers</label>
+    </div>
+
+    <div class="form-check">
+      <input class="form-check-input" type="checkbox" name="save_instances_meta" value="save_instances_meta"> <label class="form-check-label">Save instances meta data</label>
+    </div>
+  </div>
+
+  <div class="form-group">
+    <input type="submit" class="btn btn-primary" name="button_name" value="Get instances">
+  </div><small>*required</small>
+</form>
+</div>
+{% endblock %}
+
+
+<!-- 
+parser_instances.add_argument("--user_urls", help="File with urls to user profiles", type=argparse.FileType("r"))
+parser_instances.add_argument("--min_users_per_domain", help="Disregard instances with less than user_count users (default: 10)", default=10, type=int)
+parser_instances.add_argument("--max_followers", help="The maximum number of followers per user profile (default: 200)", default=200, type=int)
+parser_instances.add_argument("--save_followers", help="File to save the gathered follower accounts to", nargs="?", const="followers_meta.csv", type=argparse.FileType("w"))
+
+parser_instances.add_argument("--sort_by", help="Order or the requested instances", choices=["name", "uptime", "https_score", "obs_score", "users", "statuses", "connections", "active_users"], default="active_users", type=str)
+parser_instances.add_argument("--min_active_users", help="Minimum number of active users", default=None, type=int)
+parser_instances.add_argument("--min_users", help="Minimum number of users", default=None, type=int)
+parser_instances.add_argument("--count", help="Number of instances returned (default: 5)", default=5, type=int)
+parser_instances.add_argument("--language", help="Languages of the instances", default=None, type=str)
+
+parser_instances.add_argument("--save_instances_meta", help="File to save instance metadata to", nargs="?", const="instances_meta.csv", type=str)
+parser_instances.add_argument("--instances_file", help="File to save the list of instance to", default="instances.txt", type=str)
+parser_instances.set_defaults(func=run_instances) 
+-->
