@@ -19,13 +19,6 @@ import warnings
 warnings.filterwarnings("ignore", category=UserWarning, module='bs4') # ignore MarkupResemblesLocatorWarning
 
 logger = logging.getLogger(__name__)
-stream_handler = logging.StreamHandler()
-stream_handler.terminator = "\r"
-formatter = logging.Formatter(
-        '[%(levelname)s] | %(message)s', 
-        "%Y-%m-%dT%H:%M:%S"
-)
-stream_handler.setFormatter(formatter)
 file_handler = logging.FileHandler("mastodon-tb.log")
 formatter = logging.Formatter(
         '[%(levelname)s] | %(asctime)s | %(message)s', 
@@ -33,8 +26,7 @@ formatter = logging.Formatter(
 )
 file_handler.setFormatter(formatter)
 logger.addHandler(file_handler)
-logger.addHandler(stream_handler)
-logger.setLevel(logging.WARNING)
+logger.setLevel(logging.INFO)
 
 key_names = ["id", "created_at", "edited_at", "content", "reblog", "sensitive", "spoiler_text", "visibility", "replies_count", "reblogs_count", "favourites_count", "language", "in_reply_to_id", "in_reply_to_account_id", "user_id", "user_name", "user_acct", "user_locked", "user_bot", "user_discoverable", "user_group", "user_created_at", "user_note", "user_url", "user_avatar", "user_header", "user_followers_count", "user_following_count", "user_statuses_count", "user_last_status_at", "user_emojis", "user_fields", "media_id", "media_type", "media_url", "media_preview_url", "media_remote_url", "media_preview_remote_url", "media_text_url", "media_meta", "media_description", "media_blurhash", "mentions_id", "mentions_username", "mentions_url", "mentions_acct", "hashtags", "card_url", "card_title", "card_description", "card_type", "card_author_name", "card_author_url", "card_provider_name", "card_provider_url", "card_html", "card_width", "card_height", "card_image", "card_embed_url", "card_blurhash", "poll_id", "poll_expires_at", "poll_expired", "poll_multiple", "poll_votes_count", "poll_voters_count", "poll_options", "poll_votes", "uri", "url", "instance_name", "queried_at"]
 
@@ -890,13 +882,15 @@ def search_hashtag(queried_hashtag, api_base, access_token = None, min_id = None
     except mastodon.MastodonAPIError as e:
         logger.warning(f"There was a problem connecting to {api_base}: {e.args[1:]}")
         return queried_toots
+    except mastodon.MastodonNetworkError as e:
+        logger.warning(f"There was a problem connecting to {api_base}: {e.args[1:]}")
+        return queried_toots
     except ConnectTimeout:
         logger.warning(f"There was a problem connecting to {api_base}: ConnectTimeout")
         return queried_toots
 
     if len(queried_toots) == 0:
         logger.info(f"No toots with that hashtag found")
-        
         if verbose and logger.level >= 20:
             logger.setLevel(logging.WARNING)
         return None
@@ -911,7 +905,7 @@ def search_hashtag(queried_hashtag, api_base, access_token = None, min_id = None
             if len(new_toots) > 0:
                 queried_toots.extend(add_queried_at(new_toots))
                 logger.info(f"Got {len(queried_toots)} toots from {api_base} ({api.ratelimit_remaining} calls remaining, reset at {datetime.fromtimestamp(api.ratelimit_reset):%Y-%m-%d %H:%M:%S})")
-                if any([t["id"] > max_id for t in new_toots]):
+                if max_id and any([t["id"] > max_id for t in new_toots]):
                     paginate = False
             else:
                 paginate = False

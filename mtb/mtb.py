@@ -8,13 +8,10 @@ from shutil import rmtree
 from datetime import datetime, timedelta
 from collections import Counter
 from statistics import mean
-import logging
 from glob import glob
 from boltons import timeutils
 from tqdm import tqdm
 from . import functions as mf
-
-logger = logging.getLogger("functions")
 
 def run_cleanup(args):
     try:
@@ -34,11 +31,11 @@ def run_instances(args):
         print(f"Getting up to {args.max_followers} followers for {len(user_urls)} accounts")
 
         all_followers = []
-        for account_url in user_urls:
+        for i, account_url in enumerate(user_urls, start = 1):
             try:
                 followers = mf.get_account_followers(account_url, max_followers = args.max_followers, verbose = False)
                 all_followers.extend(followers)
-                message = f"Got {len(followers)} followers of {account_url}"
+                message = f"{i}/{len(user_urls)}: Got {len(followers)} followers of {account_url}"
                 print(f'{message: <70}', end = "\r")
             except:
                 pass
@@ -129,13 +126,18 @@ def run_hashtag(args):
         print(f"Refreshing timelines from {args.data_dir} on {len(instances)} instances, last checked at {last_checked:%Y-%m-%d %H:%M:%S}", end = "\n")
 
     timelines = {}
-    for instance in instances:
+    for n, instance in enumerate(instances, start = 1):
         if instance in mf.access_tokens.keys():
             access_token = mf.access_tokens[instance]
         else:
             access_token = None
         toots = mf.search_hashtag(hashtag, instance, access_token = access_token, local_only = args.local_only, min_id = min_ids[instance], max_id = end_date, verbose=True)
         timelines[instance] = mf.filter_toots(toots)
+        if timelines[instance]:
+            message = f"{n}/{len(instances)}: Got {len(timelines[instance])} toots from {instance}"
+        else:
+            message = f"{n}/{len(instances)}: Got no toots from {instance}"
+        print(f'{message: <70}', end = "\r")
 
     if not all([isinstance(timeline, type(None)) for timeline in timelines.values()]):
         with open(f"{args.data_dir}/{datetime.now().strftime('%s')}_timelines.json", "w") as f:
@@ -162,7 +164,7 @@ def run_hashtag(args):
         if tl:
             uris.extend([t["uri"] for t in tl])
     if uris:
-        print(f"\nGot {len(set(uris))} toots from {len(instances)} instances")
+        print(f"\nGot {len(set(uris))} unique toots from {len(instances)} instances")
     else:
         print(f"\nGot no new toots from {len(instances)} instances")
 
