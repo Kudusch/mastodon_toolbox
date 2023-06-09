@@ -258,10 +258,10 @@ def run_public(args):
 def run_interactions(args):
     def to_rows(interactions):
         for kind, interaction in interactions.items():
-            for announcement in interaction.values():
+            for dest_uri, announcement in interaction.items():
                 if kind == "context":
                     ancestors, descendants, source = announcement.values()
-                    announcement_list = (ancestors + descendants)
+                    announcement_list = {"ancestors": ancestors, "descendants": descendants}
                 else:
                     announcement_list, source = announcement.values()
                 if source == "deleted" or source == "error":
@@ -270,27 +270,34 @@ def run_interactions(args):
                 dest_content = mf.parse_toot_html(source["content"])
 
                 if kind == "context":
-                    for src_post in announcement_list:
+                    for src_post in announcement_list["ancestors"]:
                         src_acct = mf.acct_to_string(src_post["account"])
                         src_content = mf.parse_toot_html(src_post["content"])
-                        yield [dest_acct, src_acct, kind, dest_content, src_content]
+                        yield [dest_acct, src_acct, "ancestors", dest_content, src_content, dest_uri]
+                    for src_post in announcement_list["descendants"]:
+                        src_acct = mf.acct_to_string(src_post["account"])
+                        src_content = mf.parse_toot_html(src_post["content"])
+                        yield [dest_acct, src_acct, "descendants", dest_content, src_content, dest_uri]
                 else:
                     for src_acct in announcement_list:
-                        yield [dest_acct, mf.acct_to_string(src_acct), kind, dest_content, ""]
+                        yield [dest_acct, mf.acct_to_string(src_acct), kind, dest_content, "", dest_uri]
 
     toots = json.load(args.toots)
     args.toots.close()
     print(f"Getting interactions with {len(toots)} toots.")
     reblogs = mf.get_toots_reblogs(toots, verbose=True)
+    print(f"Got reblogs for {len(toots)} toots.")
     favourites = mf.get_toots_favourites(toots, verbose=True)
+    print(f"Got favourites for {len(toots)} toots.")
     context = mf.get_toots_context(toots, verbose=True)
+    print(f"Got replies for {len(toots)} toots.")
     if args.format == "json":
         json.dump({"reblogs": reblogs, "favourites": favourites,
                   "context": context}, args.out_file, default=str)
     elif args.format == "csv":
         writer = csv.writer(args.out_file, dialect="unix")
         writer.writerow(["destination", "source", "kind",
-                        "dest_content", "src_content", "tag", "instance"])
+                        "dest_content", "src_content", "dest_uri"])
         for row in to_rows({"reblogs": reblogs, "favourites": favourites, "context": context}):
             writer.writerow(row)
 
