@@ -2,6 +2,7 @@ import argparse
 import traceback
 import csv
 import json
+import random
 import sys
 from os import path, listdir
 from shutil import rmtree
@@ -436,11 +437,12 @@ def run_sample(args):
             access_token = mf.access_tokens[instance]
         else:
             access_token = None
-        # try:
+
         timelines[instance] = []
         start_date = args.start_date
         end_date = args.end_date
         max_id = (int(round(start_date.timestamp())) * 1000) << 16
+        max_id = max_id + random.randrange(-2.7e12, 2.7e12)
 
         for date_range in timeutils.daterange(start_date, end_date, step=(0, 0, args.days_between), inclusive=True):
             from_date = date_range
@@ -451,6 +453,7 @@ def run_sample(args):
                 timelines[instance].extend(
                     mf.filter_toots(chunk, query=args.filter))
                 max_id = (int(round(from_date.timestamp())) * 1000) << 16
+                max_id = max_id + random.randrange(-2.7e12, 2.7e12)
                 message = f"Got {len(timelines[instance])} toots from {instance}, last chunk {mf.get_datetime_range(chunk)}"
                 print(f'{message: <70}', end="\r")
             except:
