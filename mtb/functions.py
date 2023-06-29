@@ -16,6 +16,8 @@ import requests
 import sys
 import time
 import warnings
+from pathlib import Path
+
 # ignore MarkupResemblesLocatorWarning
 warnings.filterwarnings("ignore", category=UserWarning, module="bs4")
 
@@ -44,7 +46,7 @@ trends_key_names = {
 USER_AGENT = "mastodon_toolbox/1.0 (+https://github.com/Kudusch/mastodon_toolbox)"
 
 config = configparser.ConfigParser()
-config.read("config.ini")
+config.read(Path(__file__).parents[5].joinpath("config.ini"))
 access_tokens = config["MASTODON"]
 
 
