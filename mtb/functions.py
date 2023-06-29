@@ -373,7 +373,7 @@ def instances_to_lines(queried_instances, parse_html=False, verbose=False):
         logger.setLevel(logging.INFO)
 
     if queried_instances:
-        for data in queried_instances.values():
+        for instance_name, data in queried_instances.items():
             instance_info = data["instance"]
             activity = data["activity"]
             queried_at = data["queried_at"]
@@ -381,7 +381,7 @@ def instances_to_lines(queried_instances, parse_html=False, verbose=False):
             try:
                 instance["uri"] = instance_info["uri"]
             except:
-                instance["uri"] = ""
+                instance["uri"] = instance_name
 
             try:
                 instance["title"] = instance_info["title"]
@@ -852,16 +852,18 @@ def get_instances_by_url(urls, file_name=None, include_peers=False, parse_html=F
             access_token = access_tokens[api_base]
         else:
             access_token = None
-        api = mastodon.Mastodon(api_base_url=api_base, request_timeout=request_timeout,
-                                access_token=access_token, user_agent=USER_AGENT)
+        
         try:
+            api = mastodon.Mastodon(api_base_url=api_base, request_timeout=request_timeout, access_token=access_token, user_agent=USER_AGENT)
             instance = api.instance()
         except:
             instance = None
+        
         try:
             activity = api.instance_activity()
         except:
             activity = None
+        
         instances[api_base] = {"instance": instance,
                                "activity": activity, "queried_at": datetime.now()}
         if instance:
@@ -887,8 +889,13 @@ def search_public(api_base, query=None, access_token=None, min_id=None, max_id=N
     if verbose and logger.level >= 20:
         logger.setLevel(logging.INFO)
 
-    api = mastodon.Mastodon(api_base_url=api_base, access_token=access_token,
+    try:
+        api = mastodon.Mastodon(api_base_url=api_base, access_token=access_token,
                             request_timeout=request_timeout, ratelimit_method="pace", user_agent=USER_AGENT)
+    except:
+        logger.warning(
+            f"There was a problem connecting to {api_base}")
+        return None
 
     if min_id and (not isinstance(min_id, datetime)):
         min_id = int(min_id)
@@ -922,7 +929,10 @@ def search_public(api_base, query=None, access_token=None, min_id=None, max_id=N
     else:
         paginate = False
     while paginate:
-        new_toots = api.fetch_previous(new_toots)
+        try:
+            new_toots = api.fetch_previous(new_toots)
+        except:
+            new_toots = []
         if len(new_toots) > 0 and len(queried_toots) < max_toots:
             queried_toots.extend(add_queried_at(new_toots))
             logger.info(

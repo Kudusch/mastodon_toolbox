@@ -92,6 +92,7 @@ def run_instances(args):
                 print(instance["name"])
 
         if args.save_instances_meta:
+            print(f"\nGetting meta information for {len(instances)} instances and saving it to {args.save_instances_meta} (this might take a while)")
             instances = mf.get_instances_by_url(
                 [instance["name"] for instance in instances], file_name=args.save_instances_meta)
 
@@ -447,8 +448,12 @@ def run_sample(args):
         for date_range in timeutils.daterange(start_date, end_date, step=(0, 0, args.days_between), inclusive=True):
             from_date = date_range
             to_date = date_range + timedelta(days=args.days_between)
-            chunk = mf.search_public(
-                instance, access_token, max_toots=args.chunk_size, max_id=max_id, verbose=False)
+            try:
+                chunk = mf.search_public(
+                    instance, access_token, max_toots=args.chunk_size, max_id=max_id, verbose=False
+                )
+            except:
+                continue
             try:
                 timelines[instance].extend(
                     mf.filter_toots(chunk, query=args.filter))
