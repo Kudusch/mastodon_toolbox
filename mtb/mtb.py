@@ -11,7 +11,7 @@ from collections import Counter
 from statistics import mean
 from glob import glob
 from boltons import timeutils
-from tqdm import tqdm
+from shutil import get_terminal_size
 from . import functions as mf
 
 
@@ -496,7 +496,17 @@ def run_trends(args):
         with open(f"{args.data_dir}/{datetime.now().strftime('%s')}_trends.json", "w") as f:
             json.dump(trends, f, default=str)
 
-
+def run_users(args):
+    try:
+        user_urls = [user_url.strip() for user_url in args.user_urls.readlines()]
+    except:
+        pass
+    finally:
+        args.user_urls.close()    
+    accounts = mf.get_accounts_by_url(user_urls, file_name=args.out_file, parse_html=args.parse_html, verbose=True)
+    message = f"Got metadata for {len(accounts)} users and saved to {args.out_file}"
+    print(f'{message:{get_terminal_size().columns}.{get_terminal_size().columns}}')
+    
 def date(s):
     return datetime.strptime(s, "%Y-%m-%d")
 
@@ -565,6 +575,18 @@ def main():
     parser_hashtag.add_argument(
         "--local_only", help="Only gather toots local to the queried instances", action="store_true")
     parser_hashtag.set_defaults(func=run_hashtag)
+
+    parser_users = subparsers.add_parser(
+        "users", help="Get meta information for users")
+    parser_users.add_argument(
+        "--user_urls", help="File with urls to users", type=argparse.FileType("r"))
+    parser_users.add_argument(
+        "--out_file", help="File to save user metadata to", default="accounts_meta.csv", type=str)
+    parser_users.add_argument(
+        "--parse_html", help="Convert html in toot content and user notes to clean text", action="store_true")
+    # parser_users.add_argument(
+    #     "--get_posts", help="Only gather toots local to the queried instances", action="store_true")
+    parser_users.set_defaults(func=run_users)
 
     parser_public = subparsers.add_parser(
         "public", help="Continuously gather (filtered) public toots")

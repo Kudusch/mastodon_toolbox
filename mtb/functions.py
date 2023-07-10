@@ -17,6 +17,7 @@ import sys
 import time
 import warnings
 from pathlib import Path
+from shutil import get_terminal_size
 
 # ignore MarkupResemblesLocatorWarning
 warnings.filterwarnings("ignore", category=UserWarning, module="bs4")
@@ -793,16 +794,22 @@ def get_accounts_by_url(urls, file_name=None, parse_html=False, request_timeout=
         exit()
 
     accounts = []
-    for url in urls:
-        api_base = urlparse(url).netloc
-        api = mastodon.Mastodon(
-            api_base_url=api_base, request_timeout=request_timeout, user_agent=USER_AGENT)
-        account_name = url.split("@")[-1]
-        account = api.search_v2(
-            f"@{account_name}@{api_base}", resolve=False, result_type="accounts")["accounts"][0]
-        accounts.append(account)
-        logger.info(
-            f"Retrieved info for @{account['acct']} \"{account['display_name']}\" ({account['followers_count']} follower, {account['statuses_count']} posts)")
+    for i, url in enumerate(urls):
+        try:
+            api_base = urlparse(url).netloc
+            api = mastodon.Mastodon(
+                api_base_url=api_base, request_timeout=request_timeout, user_agent=USER_AGENT)
+            account_name = url.split("@")[-1]
+            account = api.search_v2(
+                f"@{account_name}@{api_base}", resolve=False, result_type="accounts")["accounts"][0]
+            accounts.append(account)
+            logger.info(
+                f"Retrieved info for @{account['acct']} \"{account['display_name']}\" ({account['followers_count']} follower, {account['statuses_count']} posts)")
+            if verbose:
+                message = f"Retrieved info for account {i+1} of {len(urls)}: @{account['acct']} ({account['followers_count']} follower, {account['statuses_count']} posts)"
+                print(f'{message:{get_terminal_size().columns}.{get_terminal_size().columns}}', end="\r")
+        except:
+            logger.error(f"Error retrieving info for {url}")
 
     accounts = add_queried_at(accounts)
     if file_name and ".csv" in file_name:
