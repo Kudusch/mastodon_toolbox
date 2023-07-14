@@ -442,28 +442,33 @@ def run_sample(args):
         timelines[instance] = []
         start_date = args.start_date
         end_date = args.end_date
-        max_id = (int(round(start_date.timestamp())) * 1000) << 16
-        max_id = max_id + random.randrange(-2.7e12, 2.7e12)
+        last_ids = []
 
-        for date_range in timeutils.daterange(start_date, end_date, step=(0, 0, args.days_between), inclusive=True):
-            from_date = date_range
-            to_date = date_range + timedelta(days=args.days_between)
-            try:
-                chunk = mf.search_public(
-                    instance, access_token, max_toots=args.chunk_size, max_id=max_id, verbose=False
-                )
-            except:
-                continue
-            try:
-                timelines[instance].extend(
-                    mf.filter_toots(chunk, query=args.filter))
+        for date_range in timeutils.daterange(start_date, end_date, step=(0, 0, args.days_between), inclusive=True): 
+            for h in range(0, 24, args.hours_between):
+                if args.hours_between == 24:
+                    from_date = date_range + timedelta(hours=random.randrange(-12, 12), minutes = random.randrange(-30, 30), seconds = random.randrange(-30, 30))
+                else:
+                    from_date = date_range + timedelta(hours=h, minutes = random.randrange(-30, 30), seconds = random.randrange(-30, 30))
                 max_id = (int(round(from_date.timestamp())) * 1000) << 16
-                max_id = max_id + random.randrange(-2.7e12, 2.7e12)
-                message = f"Got {len(timelines[instance])} toots from {instance}, last chunk {mf.get_datetime_range(chunk)}"
-                print(f'{message: <70}', end="\r")
-            except:
-                timelines[instance] = None
-                break
+                try:
+                    chunk = mf.search_public(
+                        instance, access_token, max_toots=args.chunk_size, max_id=max_id, verbose=False
+                    )
+                    if sorted(last_ids) == sorted([t["uri"] for t in chunk]):
+                        continue
+                    else:
+                        last_ids = [t["uri"] for t in chunk]
+                except:
+                    continue
+                try:
+                    timelines[instance].extend(
+                        mf.filter_toots(chunk, query=args.filter))
+                    message = f"Got {len(timelines[instance])} toots from {instance}, last chunk {mf.get_datetime_range(chunk)}"
+                    print(f'{message: <70}', end="\r")
+                except:
+                    timelines[instance] = None
+                    break
     if not all([isinstance(timeline, type(None)) for timeline in timelines.values()]):
         if args.data_file:
             file_name = args.data_file
@@ -615,6 +620,7 @@ def main():
     parser_sample.add_argument(
         "--chunk_size", help="Number of toots in chunk", default=100, type=int)
     parser_sample.add_argument("--days_between", default=7, type=int)
+    parser_sample.add_argument("--hours_between", default=24, type=int)
     parser_sample.add_argument(
         "--filter", help="String to filter queried toots with", type=str)
     parser_sample.add_argument(
