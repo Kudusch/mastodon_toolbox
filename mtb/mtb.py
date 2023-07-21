@@ -469,15 +469,28 @@ def run_sample(args):
                 except:
                     timelines[instance] = None
                     break
-    if not all([isinstance(timeline, type(None)) for timeline in timelines.values()]):
-        if args.data_file:
-            file_name = args.data_file
-        else:
-            file_name = f"{datetime.now().strftime('%s')}_timelines.json"
-        print(
-            f"Sampled {sum([len(tl) for tl in timelines.values() if tl])} posts from {len(timelines)} instances")
-        with open(file_name, "w") as f:
-            json.dump(timelines, f, default=str)
+
+        if args.data_dir:
+            if not isinstance(timelines[instance], type(None)):
+                file_name = f"{args.data_dir}/{datetime.now().strftime('%s')}_{instance.replace('.', '-')}.json"
+            print(
+                f"Sampled {len(timelines[instance])} posts from {instance}")
+            with open(file_name, "w") as f:
+                json.dump(timelines, f, default=str)
+            del timelines[instance]
+            
+
+    
+    if not args.data_dir:
+        if not all([isinstance(timeline, type(None)) for timeline in timelines.values()]):
+            if args.data_file:
+                file_name = args.data_file
+            else:
+                file_name = f"{datetime.now().strftime('%s')}_timelines.json"
+            print(
+                f"Sampled {sum([len(tl) for tl in timelines.values() if tl])} posts from {len(timelines)} instances")
+            with open(file_name, "w") as f:
+                json.dump(timelines, f, default=str)
 
 
 def run_trends(args):
@@ -613,6 +626,8 @@ def main():
         "--instances", help="File with urls to instances", type=argparse.FileType("r"))
     parser_sample.add_argument(
         "--data_file", help="File where gathered data is saved", type=str)
+    parser_sample.add_argument(
+        "--data_dir", help="Directory where gathered data is saved", type=str)
     parser_sample.add_argument(
         "--start_date", help="Start data gathering at this date (YYYY-MM-DD)", type=date)
     parser_sample.add_argument(
