@@ -93,15 +93,19 @@ def add_queried_at(toots):
     return toots
 
 
-def aggregate_timelines(timelines):
+def aggregate_timelines(files):
     unique_toots = {}
-    for instance, toots in timelines.items():
-        for toot in toots:
-            if toot["uri"] in unique_toots:
-                unique_toots[toot["uri"]].append((instance, toot))
-            else:
-                unique_toots[toot["uri"]] = [(instance, toot)]
-
+    for fname in files:
+        with open(f"{fname}", "r") as f:
+            for instance, toots in json.load(f).items():
+                if not toots:
+                    continue
+                for toot in toots:
+                    if toot["uri"] in unique_toots:
+                        unique_toots[toot["uri"]].append((instance, toot))
+                    else:
+                        unique_toots[toot["uri"]] = [(instance, toot)]
+    
     for uri, toots in unique_toots.items():
         if len(toots) == 1:
             instance, toot = toots[0]

@@ -4,7 +4,7 @@ import csv
 import json
 import random
 import sys
-from os import path, listdir
+from os import path, listdir, remove
 from shutil import rmtree
 from datetime import datetime, timedelta
 from collections import Counter
@@ -307,67 +307,79 @@ def run_interactions(args):
 def run_export(args):
     if not args.out_file:
         args.out_file = open(
-            f"{int(datetime.now().timestamp())}_export.{args.format}", "w")
+            f"{int(datetime.now().timestamp())}_export.{args.format}", "a")
+    else:
+        if path.exists(args.out_file.name):
+            fname = args.out_file.name
+            args.out_file.close()
+            with open(fname, "w"):
+                pass
+            args.out_file = open(fname, "a")
 
-    if path.exists(f"{args.data_dir}/search_config.json") or args.data_files:
-        timelines = {}
+    if path.exists(f"{args.data_dir}/search_config.json") or args.data_files: # Export timelines
         if args.data_files:
             files = []
-            for arg in args.data_files:
-                files += glob(arg)
+            for f in args.data_files:
+                files += glob(f)
         else:
             with open(f"{args.data_dir}/search_config.json", "r") as f:
                 config_file = json.load(f)
             files = [f"{args.data_dir}/{f}" for f in listdir(args.data_dir) if not f.startswith(
                 ".") and f != "search_config.json" and f.endswith(".json")]
-        for fname in files:
-            with open(f"{fname}", "r") as f:
-                for k, v in json.load(f).items():
-                    if v:
-                        if k in timelines:
-                            timelines[k].extend(v)
-                        else:
-                            timelines[k] = v
 
         try:
             if args.format == "json":
                 if args.aggregate:
                     toots = []
-                    for instance, uri, toot in mf.aggregate_timelines(timelines):
+                    for instance, uri, toot in mf.aggregate_timelines(files):
+                        toot["queried_instance"] = instance
                         toots.append(toot)
                     json.dump(toots, args.out_file, default=str)
                     print(
                         f"Wrote {len(toots)} unique toots to {args.out_file.name}")
                 else:
-                    json.dump(timelines, args.out_file, default=str)
+                    n_toots = 0
+                    for fname in files:
+                        with open(f"{fname}", "r") as f:
+                            for instance, toots in json.load(f).items():
+                                if not toots:
+                                    continue
+                                for toot in toots:
+                                    n_toots += 1
+                                    toot["queried_instance"] = instance
+                                    json.dump(toot, args.out_file, default=str)
+                                    args.out_file.write("\n")
+
                     print(
-                        f"Wrote toots from {len(timelines.keys())} instances to {out_file.name}")
+                        f"Wrote {n_toots} toots to {args.out_file.name}")
 
             elif args.format == "csv":
                 writer = csv.writer(args.out_file, dialect="unix")
                 writer.writerow(mf.key_names)
                 if args.aggregate:
                     n_toots = 0
-                    for instance, uri, toot in mf.aggregate_timelines(timelines):
+                    for instance, uri, toot in mf.aggregate_timelines(files):
                         toot = mf.toots_to_lines(
                             [toot], parse_html=args.parse_html, instance_name=instance, verbose=False)
                         writer.writerow(toot[0])
                         n_toots += 1
                     print(
-                        f"Wrote {n_toots} toots from {len(timelines.keys())} instances to {args.out_file.name}")
+                        f"Wrote {n_toots} unique toots to {args.out_file.name}")
                 else:
-                    for instance, toots in timelines.items():
-                        toots = mf.toots_to_lines(
-                            toots, parse_html=args.parse_html, instance_name=instance, verbose=False)
-                        for toot in toots:
-                            writer.writerow(toot)
+                    n_toots = 0
+                    for fname in files:
+                        with open(f"{fname}", "r") as f:
+                            for instance, toots in json.load(f).items():
+                                for toot in mf.toots_to_lines(toots, parse_html=args.parse_html, instance_name=instance, verbose=False):
+                                    writer.writerow(toot)
+                                    n_toots += 1
                     print(
-                        f"Wrote toots from {len(timelines.keys())} instances to {args.out_file.name}")
+                        f"Wrote {n_toots} toots to {args.out_file.name}")
         except Exception as e:
             traceback.print_exc()
         finally:
             args.out_file.close()
-    else:
+    else: # Export trends
         files = [f for f in listdir(args.data_dir) if not f.startswith(
             ".") and f.endswith("_trends.json")]
         all_tags = {}
@@ -667,7 +679,7 @@ def main():
     parser_export.add_argument("--format", help="Format of the exported file",
                                choices=["json", "csv"], default="csv", type=str)
     parser_export.add_argument(
-        "--out_file", help="File to export data to", type=argparse.FileType("w"))
+        "--out_file", help="File to export data to", type=argparse.FileType("a"))
     parser_export.add_argument(
         "--parse_html", help="Convert html in toot content and user notes to clean text", action="store_true")
     parser_export.add_argument(
