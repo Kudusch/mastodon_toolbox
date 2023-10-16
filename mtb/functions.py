@@ -64,16 +64,19 @@ def parse_toot_html(html):
 
 
 def acct_to_string(acct):
-    if not "@" in acct["acct"]:
-        regex = r"https?:\/\/(.*?)\/@(.*)"
-        try:
-            instance, name = re.search(
-                regex, acct["url"], re.MULTILINE).groups()
-        except:
-            return acct["url"]
-        return f"{name}@{instance}"
+    if "acct" in acct.keys() and "url" in acct.keys():
+        if not "@" in acct["acct"]:
+            regex = r"https?:\/\/(.*?)\/@(.*)"
+            try:
+                instance, name = re.search(
+                    regex, acct["url"], re.MULTILINE).groups()
+                return f"{name}@{instance}"
+            except:
+                return acct["url"]
+        else:
+            return acct["acct"]
     else:
-        return acct["acct"]
+        return ""
 
 
 def get_home_instance(toot):
@@ -105,7 +108,7 @@ def aggregate_timelines(files):
                         unique_toots[toot["uri"]].append((instance, toot))
                     else:
                         unique_toots[toot["uri"]] = [(instance, toot)]
-    
+
     for uri, toots in unique_toots.items():
         if len(toots) == 1:
             instance, toot = toots[0]
@@ -884,18 +887,18 @@ def get_instances_by_url(urls, file_name=None, include_peers=False, parse_html=F
             access_token = access_tokens[api_base]
         else:
             access_token = None
-        
+
         try:
             api = mastodon.Mastodon(api_base_url=api_base, request_timeout=request_timeout, access_token=access_token, user_agent=USER_AGENT)
             instance = api.instance()
         except:
             instance = None
-        
+
         try:
             activity = api.instance_activity()
         except:
             activity = None
-        
+
         instances[api_base] = {"instance": instance,
                                "activity": activity, "queried_at": datetime.now()}
         if instance:
