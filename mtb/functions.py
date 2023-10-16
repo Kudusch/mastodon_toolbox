@@ -179,14 +179,14 @@ def sanitize_toot(raw_toot, instance_name=None, parse_html=False):
         toot["created_at"] = format(
             raw_toot["created_at"], "%Y-%m-%dT%H:%M:%S")
     except:
-        toot["created_at"] = raw_toot["created_at"].replace(".000Z", "")
+        toot["created_at"] = raw_toot["created_at"]
     if "edited_at" in raw_toot.keys() and raw_toot["edited_at"] is not None:
         try:
             toot["edited_at"] = datetime.strptime(
                 f"{raw_toot['edited_at']} -0000", "%Y-%m-%dT%H:%M:%S.%fZ %z")
             toot["edited_at"] = format(toot["edited_at"], "%Y-%m-%dT%H:%M:%S")
         except:
-            toot["edited_at"] = raw_toot["edited_at"].replace(".000Z", "")
+            toot["edited_at"] = raw_toot["edited_at"]
     else:
         toot["edited_at"] = ""
 
@@ -517,7 +517,7 @@ def accounts_to_lines(queried_accounts, parse_html=False, verbose=False):
                     account["note"] = parse_toot_html(account["note"])
                 lines.append([account[k] for k in account_key_names])
             except Exception as e:
-                logger.error(f"Error sanitizing toot: {str(e)}")
+                logger.error(f"Error sanitizing account: {str(e)}")
     if verbose and logger.level >= 20:
         logger.setLevel(logging.WARNING)
     return lines
@@ -684,7 +684,7 @@ def get_toots_favourites(toots, request_timeout=15, verbose=False):
     return favs
 
 
-def get_toots_context(toots, request_timeout=15, verbose=False):
+def get_toots_context(toots, request_timeout=15, save_toots=False, parse_html=False, verbose=False):
     if verbose and logger.level >= 20:
         logger.setLevel(logging.INFO)
 
@@ -704,8 +704,11 @@ def get_toots_context(toots, request_timeout=15, verbose=False):
         try:
             api_base = get_home_instance(t)
             home_id = get_home_id(t)
-            api = mastodon.Mastodon(api_base_url=api_base, access_token=None,
-                                    request_timeout=request_timeout, user_agent=USER_AGENT)
+            if api_base in access_tokens.keys():
+                access_token = access_tokens[api_base]
+            else:
+                access_token = None
+            api = mastodon.Mastodon(api_base_url=api_base, access_token=access_token, request_timeout=request_timeout, user_agent=USER_AGENT)
         except:
             logger.warning(f"Issues with {t['uri']}")
             context[t["uri"]]["source"] = "error"
@@ -734,6 +737,22 @@ def get_toots_context(toots, request_timeout=15, verbose=False):
 
         logger.info(
             f"Retrieved {len(context[t['uri']]['ancestors'])} ancestors and {len(context[t['uri']]['descendants'])} descendants for {t['uri']}")
+
+    if save_toots:
+        with open("context_toots.csv", "w") as f:
+            writer = csv.writer(f, dialect="unix")
+            writer.writerow(key_names + ["context_type"])
+            for uri, context_toots in context.items():
+                instance_name = urlparse(uri).netloc
+                ancestors = context_toots["ancestors"]
+                descendants = context_toots["descendants"]
+                source = context_toots["source"]
+                for toot in toots_to_lines(ancestors, parse_html=parse_html, instance_name=instance_name, verbose=False):
+                    writer.writerow(toot + ["ancestor"])
+                for toot in toots_to_lines(descendants, parse_html=parse_html, instance_name=instance_name, verbose=False):
+                    writer.writerow(toot + ["descendant"])
+                for toot in toots_to_lines([source], parse_html=parse_html, instance_name=instance_name, verbose=False):
+                    writer.writerow(toot + ["source"])
 
     if verbose and logger.level >= 20:
         logger.setLevel(logging.WARNING)
